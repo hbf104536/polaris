@@ -2,42 +2,7 @@
 
 import React, { useCallback, useState, useRef } from "react";
 
-function bytesToHex(buffer) {
-  return Array.prototype.map
-    .call(new Uint8Array(buffer), (x) => ("00" + x.toString(16)).slice(-2))
-    .join("");
-}
-
-async function computeSHA256(file) {
-  const arrayBuffer = await file.arrayBuffer();
-  const hashBuffer = await crypto.subtle.digest("SHA-256", arrayBuffer);
-  return bytesToHex(hashBuffer);
-}
-
-// Mock verifier - used if backend isn't reachable
-async function mockVerify(file, hash) {
-  const ext = file.name.split(".").pop().toLowerCase();
-  const isImage = ["jpg", "jpeg", "png", "webp"].includes(ext);
-  const randomScore = 0.6 + Math.random() * 0.35;
-  const aiProb = 1 - randomScore;
-  const message = randomScore > 0.8 ? "Likely Authentic" : randomScore > 0.65 ? "Uncertain" : "Likely AI-generated";
-  return new Promise((res) =>
-    setTimeout(() =>
-      res({
-        status: "ok",
-        polarisId: "PLS-MOCK-" + Math.floor(Math.random() * 1000000),
-        authenticityScore: Number(randomScore.toFixed(2)),
-        aiProbability: Number(aiProb.toFixed(2)),
-        exif: isImage ? { camera: "MockCam 1.0", hasExif: Math.random() > 0.4 } : { hasExif: false },
-        hash,
-        message,
-      }),
-      900
-    )
-  );
-}
-
-/*
+/* 
 Polaris - MVP React Component (single-file)
 What this file is:
 - A single-file React component (default export) implementing a polished MVP front-end for the Polaris verification flow.
@@ -65,22 +30,16 @@ How to use this component:
 Note: this is a front-end MVP to demonstrate UX, hashing, previews and API wiring. Real-world deployment should add auth, rate-limiting, virus scanning, legal/disclaimer UI, and secure file handling on the server.
 */
 
-'use client';
-import * as React from 'react';
-const { useCallback, useState, useRef } = React;
-
 function bytesToHex(buffer) {
   return Array.prototype.map
     .call(new Uint8Array(buffer), (x) => ("00" + x.toString(16)).slice(-2))
     .join("");
 }
-
 async function computeSHA256(file) {
   const arrayBuffer = await file.arrayBuffer();
   const hashBuffer = await crypto.subtle.digest("SHA-256", arrayBuffer);
   return bytesToHex(hashBuffer);
 }
-
 // Mock verifier - used if backend isn't reachable
 async function mockVerify(file, hash) {
   // crude heuristics just for demo
@@ -104,7 +63,6 @@ async function mockVerify(file, hash) {
     )
   );
 }
-
 export default function PolarisMVP() {
   const [dragOver, setDragOver] = useState(false);
   const [file, setFile] = useState(null);
@@ -114,14 +72,12 @@ export default function PolarisMVP() {
   const [result, setResult] = useState(null);
   const [error, setError] = useState(null);
   const fileInputRef = useRef(null);
-
   const handleFiles = useCallback(async (files) => {
     setError(null);
     setResult(null);
     const f = files[0];
     if (!f) return;
     setFile(f);
-
     // show preview if image or short video
     if (f.type.startsWith("image/") || f.type.startsWith("video/")) {
       try {
@@ -133,7 +89,6 @@ export default function PolarisMVP() {
     } else {
       setPreviewUrl(null);
     }
-
     // compute hash (SHA-256) in browser
     try {
       setLoading(true);
@@ -146,7 +101,6 @@ export default function PolarisMVP() {
       setLoading(false);
     }
   }, []);
-
   const handleDrop = useCallback(
     async (e) => {
       e.preventDefault();
@@ -158,15 +112,12 @@ export default function PolarisMVP() {
     },
     [handleFiles]
   );
-
   const handleSelectClick = () => fileInputRef.current && fileInputRef.current.click();
-
   const handleFileInput = async (e) => {
     if (e.target.files && e.target.files.length) {
       await handleFiles(e.target.files);
     }
   };
-
   const uploadAndVerify = async () => {
     setError(null);
     setResult(null);
@@ -174,14 +125,12 @@ export default function PolarisMVP() {
       setError("No file selected");
       return;
     }
-
     setLoading(true);
     try {
       // try calling real backend
       const form = new FormData();
       form.append("file", file);
       if (hash) form.append("hash", hash);
-
       const resp = await fetch("/api/verify", { method: "POST", body: form });
       if (!resp.ok) {
         // fallback to mock if 404 or CORS
@@ -197,7 +146,6 @@ export default function PolarisMVP() {
       setLoading(false);
     }
   };
-
   const clearAll = () => {
     setDragOver(false);
     setFile(null);
@@ -206,7 +154,6 @@ export default function PolarisMVP() {
     setResult(null);
     setError(null);
   };
-
   return (
     <div className="min-h-screen bg-slate-50 p-6 flex items-center justify-center">
       <div className="max-w-4xl w-full">
@@ -214,7 +161,6 @@ export default function PolarisMVP() {
           <h1 className="text-3xl font-extrabold">Polaris — Verification Demo</h1>
           <p className="text-slate-600 mt-1">Upload an image or video and Polaris will analyze it for authenticity.</p>
         </header>
-
         <main className="grid grid-cols-1 lg:grid-cols-2 gap-6">
           <section>
             <div
@@ -242,9 +188,7 @@ export default function PolarisMVP() {
                   </button>
                 </div>
               </div>
-
               <input ref={fileInputRef} onChange={handleFileInput} type="file" className="hidden" />
-
               <div className="mt-6">
                 {file ? (
                   <div className="flex gap-4 items-start">
@@ -259,7 +203,6 @@ export default function PolarisMVP() {
                         <div className="text-slate-400 text-sm">No preview</div>
                       )}
                     </div>
-
                     <div className="flex-1">
                       <div className="flex items-center justify-between">
                         <div>
@@ -271,7 +214,6 @@ export default function PolarisMVP() {
                           <div className="font-mono text-xs break-all w-48">{hash ?? "—"}</div>
                         </div>
                       </div>
-
                       <div className="mt-3 flex gap-2">
                         <button
                           onClick={uploadAndVerify}
@@ -290,10 +232,8 @@ export default function PolarisMVP() {
                   <div className="mt-4 text-slate-500">No file selected yet.</div>
                 )}
               </div>
-
               <div className="mt-6 text-xs text-slate-400">Tip: For best results use original photos or videos with intact EXIF metadata.</div>
             </div>
-
             <div className="mt-4 flex gap-3">
               <button
                 onClick={() => {
@@ -306,7 +246,6 @@ export default function PolarisMVP() {
               >
                 Load Demo Image
               </button>
-
               <a
                 href="#"
                 onClick={(e) => {
@@ -319,19 +258,15 @@ export default function PolarisMVP() {
               </a>
             </div>
           </section>
-
           <aside>
             <div className="rounded-2xl p-6 bg-white border border-slate-200">
               <h3 className="font-semibold">Verification Report</h3>
-
               {error && (
                 <div className="mt-4 text-sm text-red-600">{error}</div>
               )}
-
               {!result && (
                 <div className="mt-4 text-slate-500 text-sm">No verification run yet. Upload a file and click "Analyze with Polaris."</div>
               )}
-
               {result && (
                 <div className="mt-4 space-y-4">
                   <div className="flex items-center justify-between">
@@ -339,7 +274,6 @@ export default function PolarisMVP() {
                       <div className="text-sm text-slate-500">Polaris ID</div>
                       <div className="font-semibold">{result.polarisId}</div>
                     </div>
-
                     <div className="text-right">
                       <div className="text-sm text-slate-500">Authenticity</div>
                       <div className="font-semibold">
@@ -347,22 +281,18 @@ export default function PolarisMVP() {
                       </div>
                     </div>
                   </div>
-
                   <div className="rounded-lg border p-3 bg-slate-50">
                     <div className="text-xs text-slate-500">AI probability</div>
                     <div className="font-mono text-sm">{Number(result.aiProbability ?? 0).toFixed(2)}</div>
                   </div>
-
                   <div className="text-sm text-slate-500">
                     <div>Hash</div>
                     <div className="font-mono text-xs break-all">{result.hash}</div>
                   </div>
-
                   <div className="text-sm text-slate-500">
                     <div>EXIF</div>
                     <div className="font-mono text-xs">{JSON.stringify(result.exif)}</div>
                   </div>
-
                   <div className="flex gap-2">
                     <a
                       className="px-3 py-2 rounded-md border text-sm"
@@ -378,7 +308,6 @@ export default function PolarisMVP() {
                     >
                       View Share Link
                     </a>
-
                     <button
                       className="px-3 py-2 rounded-md border text-sm"
                       onClick={() => {
@@ -391,10 +320,8 @@ export default function PolarisMVP() {
                   </div>
                 </div>
               )}
-
               <div className="mt-6 text-xs text-slate-400">Note: This demo may use a mock verifier if your backend isn't connected. See the top of the component for the backend contract.</div>
             </div>
-
             <div className="mt-4 rounded-2xl p-4 bg-white border border-slate-200">
               <h4 className="font-semibold text-sm">Developer notes</h4>
               <ul className="text-xs text-slate-500 mt-2 space-y-1">
@@ -405,7 +332,6 @@ export default function PolarisMVP() {
             </div>
           </aside>
         </main>
-
         <footer className="mt-8 text-sm text-slate-500 text-center">Polaris MVP — demo UI • built for founders</footer>
       </div>
     </div>
