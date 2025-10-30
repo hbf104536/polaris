@@ -1,3 +1,4 @@
+'use client';
 /*
 Polaris - MVP React Component (single-file)
 
