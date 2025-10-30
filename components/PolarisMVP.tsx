@@ -32,7 +32,9 @@ How to use this component:
 Note: this is a front-end MVP to demonstrate UX, hashing, previews and API wiring. Real-world deployment should add auth, rate-limiting, virus scanning, legal/disclaimer UI, and secure file handling on the server.
 */
 
-import React, { useCallback, useState, useRef } from "react";
+'use client';
+import * as React from 'react';
+const { useCallback, useState, useRef } = React;
 
 function bytesToHex(buffer) {
   return Array.prototype.map
