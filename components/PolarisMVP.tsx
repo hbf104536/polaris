@@ -1,14 +1,49 @@
 'use client';
 
+import React, { useCallback, useState, useRef } from "react";
+
+function bytesToHex(buffer) {
+  return Array.prototype.map
+    .call(new Uint8Array(buffer), (x) => ("00" + x.toString(16)).slice(-2))
+    .join("");
+}
+
+async function computeSHA256(file) {
+  const arrayBuffer = await file.arrayBuffer();
+  const hashBuffer = await crypto.subtle.digest("SHA-256", arrayBuffer);
+  return bytesToHex(hashBuffer);
+}
+
+// Mock verifier - used if backend isn't reachable
+async function mockVerify(file, hash) {
+  const ext = file.name.split(".").pop().toLowerCase();
+  const isImage = ["jpg", "jpeg", "png", "webp"].includes(ext);
+  const randomScore = 0.6 + Math.random() * 0.35;
+  const aiProb = 1 - randomScore;
+  const message = randomScore > 0.8 ? "Likely Authentic" : randomScore > 0.65 ? "Uncertain" : "Likely AI-generated";
+  return new Promise((res) =>
+    setTimeout(() =>
+      res({
+        status: "ok",
+        polarisId: "PLS-MOCK-" + Math.floor(Math.random() * 1000000),
+        authenticityScore: Number(randomScore.toFixed(2)),
+        aiProbability: Number(aiProb.toFixed(2)),
+        exif: isImage ? { camera: "MockCam 1.0", hasExif: Math.random() > 0.4 } : { hasExif: false },
+        hash,
+        message,
+      }),
+      900
+    )
+  );
+}
+
 /*
 Polaris - MVP React Component (single-file)
-
 What this file is:
 - A single-file React component (default export) implementing a polished MVP front-end for the Polaris verification flow.
 - Uses Tailwind utility classes for styling (assumes Tailwind is configured in the project).
 - Provides drag-and-drop and file-picker upload, computes SHA-256 hash in-browser, shows a preview, and POSTs the file to a backend endpoint at /api/verify.
 - If the backend is not available it uses a local mock verification runner so you can demo without a server.
-
 Backend contract (what the backend should implement):
 POST /api/verify
 - Accepts multipart/form-data with field "file" and optional "hash".
@@ -23,12 +58,10 @@ POST /api/verify
     "message": "Likely Authentic"
   }
 - For errors, return HTTP 4xx/5xx with { "status": "error", "message": "..." }
-
 How to use this component:
 1. Place this file into a React app (Vite / Next / CRA). Ensure Tailwind is configured.
 2. Render <PolarisMVP /> somewhere (e.g., in App.jsx).
 3. Implement a minimal backend matching the contract above, or rely on the mock included.
-
 Note: this is a front-end MVP to demonstrate UX, hashing, previews and API wiring. Real-world deployment should add auth, rate-limiting, virus scanning, legal/disclaimer UI, and secure file handling on the server.
 */
 
